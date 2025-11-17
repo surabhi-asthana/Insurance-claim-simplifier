@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Insurance Claim Simplifier</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboardView" class="view active">
+        <header class="header">
+            <div class="logo">
+                <svg class="icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <div>
+                    <h1>AI Insurance Claim Simplifier</h1>
+                    <p>Smart claim processing made simple</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card stat-total">
+                    <div class="stat-icon">📁</div>
+                    <div class="stat-content">
+                        <h3>Total Policies</h3>
+                        <p class="stat-number" id="totalCount">0</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-valid">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <h3>Valid</h3>
+                        <p class="stat-number" id="validCount">0</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-ongoing">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-content">
+                        <h3>Ongoing</h3>
+                        <p class="stat-number" id="ongoingCount">0</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-completed">
+                    <div class="stat-icon">🎉</div>
+                    <div class="stat-content">
+                        <h3>Completed</h3>
+                        <p class="stat-number" id="completedCount">0</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-fraud">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-content">
+                        <h3>Fraud Detected</h3>
+                        <p class="stat-number" id="fraudCount">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Policies Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2>Previous Policies</h2>
+                </div>
+                <div id="foldersList" class="folders-grid">
+                    <!-- Folders will be loaded here -->
+                </div>
+            </section>
+
+            <!-- New Policy Button -->
+            <button class="btn-new-policy" id="newPolicyBtn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Create New Policy
+            </button>
+        </main>
+    </div>
+
+    <!-- UPLOAD POLICY VIEW -->
+    <div id="uploadPolicyView" class="view">
+        <header class="header">
+            <button class="btn-back" onclick="showView('dashboard')">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back to Dashboard
+            </button>
+        </header>
+
+        <main class="container">
+            <div class="upload-container">
+                <div class="upload-card">
+                    <h2>Step 1: Upload Policy Document</h2>
+                    <p>Upload your insurance policy PDF or image. AI will validate and extract key details.</p>
+                    
+                    <div class="form-group">
+                        <label>Policy Folder Name *</label>
+                        <input type="text" id="folderName" placeholder="e.g., My Health Insurance 2024" required>
+                    </div>
+
+                    <div class="upload-area" id="policyUploadArea">
+                        <svg class="icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p>Click to upload or drag and drop</p>
+                        <span>PDF, JPG, PNG (Max 16MB)</span>
+                        <input type="file" id="policyFileInput" accept=".pdf,.jpg,.jpeg,.png" hidden>
+                    </div>
+
+                    <button class="btn-primary btn-large" id="uploadPolicyBtn" disabled>
+                        <div class="spinner" id="uploadSpinner" style="display: none;"></div>
+                        <span id="uploadBtnText">Upload & Validate Policy</span>
+                    </button>
+
+                    <div id="policyValidationResult" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- FOLDER VIEW -->
+    <div id="folderView" class="view">
+        <header class="header">
+            <button class="btn-back" onclick="showView('dashboard')">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back to Dashboard
+            </button>
+        </header>
+
+        <main class="container">
+            <!-- Folder Header -->
+            <div class="folder-header">
+                <div>
+                    <h2 id="folderTitle">Loading...</h2>
+                    <div class="folder-meta">
+                        <span id="folderCompany"></span>
+                        <span>•</span>
+                        <span id="folderPolicy"></span>
+                    </div>
+                </div>
+                <div class="folder-status">
+                    <span class="completion-badge" id="folderCompletion">0%</span>
+                    <span class="status-badge" id="folderStatus"></span>
+                </div>
+            </div>
+
+            <!-- Policy Summary Card -->
+            <div class="card" id="policySummaryCard">
+                <h3>📋 Policy Summary</h3>
+                <p id="policySummary" style="margin: 1rem 0; line-height: 1.6;"></p>
+                <div class="policy-details-grid">
+                    <div class="detail-item">
+                        <strong>Coverage:</strong>
+                        <span id="policyCoverage"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Expiry Date:</strong>
+                        <span id="policyExpiry"></span>
+                    </div>
+                </div>
+                <div class="exclusions-box">
+                    <strong>⚠️ Policy Exclusions:</strong>
+                    <ul id="policyExclusions" style="margin-top: 0.5rem;"></ul>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="documents">📄 Documents</button>
+                <button class="tab" data-tab="analysis">📊 Analysis</button>
+                <button class="tab" data-tab="qna">💬 Q&A</button>
+            </div>
+
+            <!-- Documents Tab -->
+            <div id="documentsTab" class="tab-content active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Uploaded Documents</h3>
+                        <label class="btn-secondary" id="uploadDocLabel">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload Document
+                            <input type="file" id="docFileInput" accept="image/*,.pdf" multiple hidden>
+                        </label>
+                    </div>
+                    <div id="documentsList">
+                        <!-- Documents will be loaded here -->
+                    </div>
+                    
+                    <button class="btn-success btn-large" id="analyzeBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        Generate Complete Analysis
+                    </button>
+                </div>
+            </div>
+
+            <!-- Analysis Tab -->
+            <div id="analysisTab" class="tab-content">
+                <div class="card">
+                    <div id="analysisContent">
+                        <div class="empty-state">
+                            <svg class="icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            <p>Upload documents and click "Generate Analysis" to view detailed report</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Q&A Tab -->
+            <div id="qnaTab" class="tab-content">
+                <div class="card">
+                    <h3>💬 Ask About Your Policy</h3>
+                    <p style="color: var(--text-light); margin-bottom: 1rem;">Get instant answers about your policy coverage, exclusions, and claim process.</p>
+                    <div class="qna-container">
+                        <div id="qnaHistory">
+                            <!-- Q&A history will be loaded here -->
+                        </div>
+                        <div class="qna-input">
+                            <input type="text" id="questionInput" placeholder="Ask a question about your policy..." autocomplete="off">
+                            <button class="btn-primary" id="askBtn">Ask</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
