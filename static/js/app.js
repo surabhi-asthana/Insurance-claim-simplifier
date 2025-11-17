@@ -95,6 +95,7 @@ async function initDashboard() {
     console.log('Loading dashboard...');
     await loadDashboardStats();
     await loadFolders();
+    await loadNotifications();
 }
 
 async function loadDashboardStats() {
@@ -254,24 +255,25 @@ async function uploadPolicy() {
     formData.append('file', policyFile);
     formData.append('folder_name', folderName);
     
-    try {
-        console.log('Uploading policy...');
-        const response = await fetch(`${API_BASE}/upload-policy`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            console.log('Policy uploaded successfully:', result);
-            showResult('success', '✓ Policy validated successfully! Redirecting to folder...');
-            showNotification('Policy uploaded and validated!', 'success');
-            
-            setTimeout(() => {
-                currentFolderId = result.id;
-                showView('folder');
-            }, 1500);
+   try {
+    console.log('Uploading policy...');
+    const response = await fetch(`${API_BASE}/upload-policy`, {
+        method: 'POST',
+        body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+        console.log('Policy uploaded successfully:', result);
+        showResult('success', '✓ Policy validated successfully! Starting AI analysis...');
+        showNotification('Policy uploaded and validated!', 'success');
+        const folderId = result.id;
+        await runInitialPolicyAnalysis(folderId); 
+
+        // Now switch the view
+        currentFolderId = folderId;
+        showView('folder');
         } else {
             console.error('Policy upload failed:', result.error);
             showResult('error', '✗ ' + (result.error || 'Invalid policy document'));
@@ -286,7 +288,32 @@ async function uploadPolicy() {
         btnText.textContent = 'Upload & Validate Policy';
     }
 }
+async function runInitialPolicyAnalysis(folderId) {
+    showNotification('Analyzing policy for coverage and risk...', 'info');
+    
+    try {
+        console.log(`Triggering initial analysis for folder ${folderId}...`);
+        
+        // This is the same endpoint used by the manual 'Generate Analysis' button
+        const response = await fetch(`${API_BASE}/folders/${folderId}/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
 
+        if (!response.ok) {
+            // Log the error but continue execution (don't block the user from seeing the folder)
+            throw new Error('Policy analysis failed on the server.');
+        }
+
+        console.log('Initial analysis complete.');
+        showNotification('Policy analysis complete! You can now review the details.', 'success');
+        
+    } catch (error) {
+        console.error('Initial Analysis Error:', error);
+        // Display a warning that analysis failed, suggesting a manual trigger
+        showNotification('Warning: Automatic policy analysis failed. Generate analysis manually in the folder view.', 'warning');
+    }
+}
 function showResult(type, message) {
     const resultBox = document.getElementById('policyValidationResult');
     resultBox.className = `result-box ${type}`;
@@ -795,3 +822,69 @@ notificationStyles.textContent = `
     }
 `;
 document.head.appendChild(notificationStyles);
+// ==================== NOTIFICATION CENTRE ====================
+// In the setupEventListeners function:
+document.getElementById('notificationToggle').addEventListener('click', () => {
+    document.getElementById('notificationCenter').classList.toggle('active');
+});
+async function loadNotifications() {
+    console.log('Checking for policy expiries and alerts...');
+    const container = document.getElementById('notificationCenter');
+    let notificationsHtml = '';
+    let notificationCount = 0;
+    
+    try {
+        const response = await fetch(`${API_BASE}/folders`);
+        if (!response.ok) throw new Error('Failed to fetch folders for notifications');
+        
+        const folders = await response.json();
+        const today = new Date();
+        const soonThreshold = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        
+        for (const folder of folders) {
+            const expiryDate = new Date(folder.expiry_date);
+            const timeDiff = expiryDate - today;
+
+            // 1. Expiry Notifications
+            if (folder.expiry_date && expiryDate > today && timeDiff <= soonThreshold) {
+                const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+                notificationsHtml += `
+                    <div class="notification-item item-warning" onclick="openFolder(${folder.id})">
+                        <p>⚠️ **Policy Expiry Warning:** ${escapeHtml(folder.folder_name)} expires in **${daysRemaining} days** (${folder.expiry_date}).</p>
+                    </div>
+                `;
+                notificationCount++;
+            } 
+            
+            // 2. Completion Notifications (If a folder is less than 50% complete)
+            if (folder.completion_percentage < 50 && folder.document_count > 0 && folder.status !== 'completed') {
+                 notificationsHtml += `
+                    <div class="notification-item item-info" onclick="openFolder(${folder.id})">
+                        <p>💡 **Action Required:** Upload more documents to complete **${escapeHtml(folder.folder_name)}**. Only ${folder.completion_percentage}% complete.</p>
+                    </div>
+                `;
+                notificationCount++;
+            }
+            
+            // 3. Fraud/Suspicious Activity (If analysis exists and contains warnings)
+            // Note: This requires a new backend route /api/folders/{id}/latest-analysis-summary
+            // Since we don't have that simple endpoint, we'll check the folder status from the DB.
+            if (folder.status === 'suspicious') {
+                 notificationsHtml += `
+                    <div class="notification-item item-danger" onclick="openFolder(${folder.id})">
+                        <p>🚨 **Fraud Alert:** Suspicious activity detected in folder **${escapeHtml(folder.folder_name)}**. Review analysis immediately.</p>
+                    </div>
+                `;
+                notificationCount++;
+            }
+        }
+        
+        container.innerHTML = notificationsHtml;
+        document.getElementById('notificationBadge').textContent = notificationCount;
+        document.getElementById('notificationBadge').style.display = notificationCount > 0 ? 'flex' : 'none';
+
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+        container.innerHTML = `<p class="error-text">Failed to load alerts.</p>`;
+    }
+}

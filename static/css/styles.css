@@ -885,3 +885,151 @@ body {
     clip: rect(0, 0, 0, 0);
     border: 0;
 }
+/* --- Notification Dropdown & Toggle --- */
+.header-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#notificationToggle {
+    position: relative;
+    cursor: pointer;
+    margin-left: 1rem;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+#notificationToggle:hover {
+    background: var(--bg-hover);
+}
+
+.badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--danger); /* Red for alerts */
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border-radius: 50%;
+    padding: 2px 6px;
+    display: none; /* Hidden by default if count is zero (handled by JS) */
+    line-height: 1;
+}
+
+#notificationCenter {
+    position: absolute;
+    top: 100%; /* Position below the toggle button */
+    right: 0;
+    width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-xl);
+    z-index: 900;
+    padding: 0.5rem;
+    display: none; /* Hidden until toggled by JavaScript */
+    margin-top: 10px;
+}
+
+#notificationCenter.active {
+    display: block;
+}
+
+/* --- Individual Notification Items --- */
+.notification-item {
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1.4;
+    transition: background 0.2s;
+}
+
+.notification-item:last-child {
+    margin-bottom: 0;
+}
+
+.notification-item:hover {
+    background: var(--bg-hover);
+}
+
+.notification-item p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.item-warning {
+    border-left: 4px solid var(--warning);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.item-info {
+    border-left: 4px solid var(--primary);
+    background: rgba(0, 123, 255, 0.1);
+}
+
+.item-danger {
+    border-left: 4px solid var(--danger);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.empty-state {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-light);
+}
+/* Universal Reset - Crucial for consistent layout */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* Highly recommended for layout control */
+}
+
+/* Ensure the body itself doesn't have default top margin */
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh; /* Optional: ensures body spans full viewport height */
+    background: var(--bg-body); /* Or whatever your desired background color is */
+}
+/* Target your main header that contains the H1 */
+.header {
+    /* Method 1: Add a tiny, invisible border to contain the child margins */
+    border-top: 1px solid transparent; 
+    
+    /* OR Method 2: Add a small top padding */
+    /* padding-top: 1px; */
+    
+    /* Ensure no margins are accidentally applied to the header itself */
+    margin-top: 0;
+}
+/* --- 1. Hard Reset HTML and Body --- */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    /* Crucial: Ensure height is 100% of the viewport */
+    min-height: 100vh;
+}
+
+/* --- 2. Universal Box Model Reset (If not already done) --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* --- 3. Fix Margin Collapse on Main Content --- */
+/* Target the immediate child of the body, which is likely where the space starts */
+#dashboardView {
+    /* Prevents any potential margin-top on H1 or P inside from pushing the view down */
+    padding-top: 1px;
+    margin-top: -1px; /* The -1px offsets the 1px padding, resulting in no net change but fixing margin collapse */
+    
+    /* Alternatively, if you use a full-page container: */
+    /* display: flex; 
+    flex-direction: column; */
+}

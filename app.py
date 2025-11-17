@@ -35,7 +35,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 # Initialize EasyOCR Reader (supports English and Hindi/Devanagari)
 # NOTE: 'te' (Telugu) is removed as it conflicts with 'hi' (Hindi). 
 print("Initializing EasyOCR... This may take a moment on first run.")
-reader = easyocr.Reader(['en', 'hi'], gpu=False)
+reader = easyocr.Reader(['en', 'hi'], gpu=True)
 print("EasyOCR ready!")
 
 db = SQLAlchemy(app)
@@ -182,12 +182,13 @@ def enhance_image(image):
         img = image.convert('L')
         
         # Increase contrast significantly
+        # Increase contrast moderately
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(2.5)
+        img = enhancer.enhance(1.5) # Adjusted from 2.5
         
-        # Increase sharpness
+        # Increase sharpness moderately
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(2.0)
+        img = enhancer.enhance(1.2) # Adjusted from 2.0
         
         # Apply denoising filter
         img = img.filter(ImageFilter.MedianFilter(size=3))
@@ -216,7 +217,7 @@ def extract_text_from_image(image_path):
             
             print("Converting PDF to images...")
             # Convert PDF to images
-            images = pdf2image.convert_from_path(image_path, dpi=300)
+            images = pdf2image.convert_from_path(image_path, dpi=200) 
             text_parts = []
             
             for idx, img in enumerate(images):
@@ -350,27 +351,23 @@ def extract_policy_data(text):
     }
 
 def analyze_document(text, folder_id):
-    """Enhanced document analysis with cross-referencing to policy"""
+    """
+    Analyzes document integrity (signatures, dates, completeness) but NO longer
+    performs policy-specific fraud checks (exclusions, coverage) as per your request.
+    """
     print(f"Analyzing document for folder {folder_id}...")
     folder = PolicyFolder.query.get_or_404(folder_id)
     
-    # Get all existing documents for cross-verification
+    # Get all existing documents for cross-verification (still helpful for data consistency)
     existing_docs = Document.query.filter_by(folder_id=folder_id).all()
     existing_summaries = "\n".join([f"- {doc.filename}: {doc.summary}" for doc in existing_docs])
     
-    coverage = folder.coverage_amount
-    exclusions = folder.exclusions
-    required_docs = folder.required_documents
-    policy_text_snippet = folder.policy_summary[:500] if folder.policy_summary else ""
+    # NOTE: The Policy Context is removed from the prompt to prevent policy fraud checks.
     
     prompt = f"""
-    You are an expert insurance fraud detection AI. Analyze this medical/insurance document for claim processing.
-    
-    POLICY CONTEXT (THE RULEBOOK):
-    - Coverage: {coverage}
-    - Exclusions: {exclusions}
-    - Required Documents: {required_docs}
-    - Policy Summary: {policy_text_snippet}
+    You are an expert document integrity AI. Analyze this medical/insurance document.
+    Your task is to extract key data and check for document completeness and consistency.
+    DO NOT perform checks against policy exclusions, coverage limits, or waiting periods.
     
     EXISTING DOCUMENTS IN THIS CLAIM:
     {existing_summaries}
@@ -378,14 +375,10 @@ def analyze_document(text, folder_id):
     CURRENT DOCUMENT TEXT TO ANALYZE:
     {text}
     
-    CRITICAL FRAUD DETECTION CHECKS:
-    1. **Date Consistency**: Check if document dates are within policy validity period
-    2. **Treatment Exclusions**: Verify treatments/procedures against policy exclusions
-    3. **Amount Anomalies**: Flag unusually high amounts or duplicate charges
-    4. **Cross-Document Consistency**: Check if dates, patient names, and diagnoses match across documents
-    5. **Required Signatures/Seals**: Verify presence of doctor signatures and hospital seals
-    6. **Waiting Period Violations**: Check if claim is made during waiting periods
-    7. **Pre-existing Conditions**: Flag treatments for pre-existing conditions if not covered
+    CRITICAL DOCUMENT INTEGRITY CHECKS:
+    1. **Date Consistency**: Check if document dates are consistent with the claim timeline.
+    2. **Required Signatures/Seals**: Verify presence of doctor signatures and hospital seals.
+    3. **Cross-Document Consistency**: Check if patient names, and diagnoses match across documents.
     
     Provide detailed analysis in JSON format:
     {{
@@ -405,19 +398,18 @@ def analyze_document(text, folder_id):
         "summary": "brief 2-3 sentence summary",
         "missing_info": ["critical", "missing", "information"],
         "fraud_indicators": [
-            "Specific fraud concerns with severity level (HIGH/MEDIUM/LOW)",
-            "Example: HIGH - Treatment date is before policy start date",
+            "Specific integrity concerns like missing signatures or inconsistent dates (HIGH/MEDIUM/LOW)",
             "Example: MEDIUM - Missing hospital seal verification"
         ],
         "policy_compliance": {{
-            "is_covered": true/false,
-            "exclusion_violated": "specific exclusion name or null",
-            "waiting_period_issue": true/false,
-            "reason": "explanation of coverage decision"
+            "is_covered": true, 
+            "exclusion_violated": "null", 
+            "waiting_period_issue": false, 
+            "reason": "Policy compliance skipped as per instruction."
         }}
     }}
     
-    Be thorough and strict. Flag ALL suspicious patterns.
+    Be thorough and strict on document integrity.
     Return ONLY valid JSON.
     """
     
@@ -427,7 +419,9 @@ def analyze_document(text, folder_id):
         if json_match:
             data = json.loads(json_match.group(0))
             print(f"Document analyzed: {data.get('document_type')} - Completeness: {data.get('completeness')}%")
-            print(f"Fraud indicators: {len(data.get('fraud_indicators', []))}")
+            print(f"Fraud indicators (Document Integrity): {len(data.get('fraud_indicators', []))}")
+            # Ensure policy compliance is reset to indicate skipping
+            data['policy_compliance'] = {"is_covered": True, "exclusion_violated": "null", "waiting_period_issue": False, "reason": "Policy compliance skipped as per instruction."}
             return data
     except Exception as e:
         print(f"Error analyzing document: {e}")
@@ -438,7 +432,7 @@ def analyze_document(text, folder_id):
         "amount": 0,
         "summary": "Analysis incomplete",
         "missing_info": ["Analysis failed"],
-        "fraud_indicators": ["Could not complete fraud analysis"],
+        "fraud_indicators": ["Could not complete document integrity analysis"],
         "policy_compliance": {"is_covered": False, "reason": "Analysis failed"}
     }
 
@@ -618,36 +612,53 @@ def generate_comprehensive_analysis(folder_id):
     }
 
 def update_folder_status(folder_id):
-    """Update folder completion percentage and status based on document analysis"""
+    """
+    Update folder completion percentage and status based on document analysis.
+    Status check now prioritizes 'suspicious' from the AnalysisReport.
+    """
     print(f"Updating folder status for {folder_id}...")
     folder = PolicyFolder.query.get_or_404(folder_id)
     documents = Document.query.filter_by(folder_id=folder_id).all()
     
+    # 1. Calculate Completion Percentage
     if not documents:
         folder.completion_percentage = 0
-        folder.status = 'ongoing'
     else:
         # Calculate average completeness
         avg_completeness = sum([doc.completeness for doc in documents]) / len(documents)
         folder.completion_percentage = int(avg_completeness)
-        
-        # Check for fraud indicators
-        has_fraud = any([
-            doc.extracted_data and 'fraud' in doc.extracted_data.lower() 
-            for doc in documents
-        ])
-        
-        # Set status based on completion and fraud
-        if has_fraud:
-            folder.status = 'fraud'
-        elif folder.completion_percentage >= 95:
-            folder.status = 'completed'
-        elif folder.completion_percentage >= 70:
-            folder.status = 'valid'
-        else:
-            folder.status = 'ongoing'
+
+    # 2. Determine Folder Status
+    new_status = 'ongoing'
     
-    print(f"Folder status: {folder.status} ({folder.completion_percentage}%)")
+    # Check for latest Analysis Report (This is the most accurate source for fraud/risk)
+    latest_report = AnalysisReport.query.filter_by(folder_id=folder_id).order_by(AnalysisReport.created_at.desc()).first()
+    
+    # A. HIGH PRIORITY: Check for Fraud Warnings
+    if latest_report:
+        try:
+            # The fraud_warnings column stores a JSON string and needs to be parsed
+            warnings = json.loads(latest_report.fraud_warnings)
+            if warnings and len(warnings) > 0:
+                new_status = 'suspicious'
+                print(f"Status set to 'suspicious': {len(warnings)} fraud warnings found in latest report.")
+        except (json.JSONDecodeError, TypeError):
+            # If the JSON parsing fails, we proceed without flagging fraud from the report
+            pass
+    
+    # B. Set Status based on Completion if not suspicious
+    if new_status != 'suspicious':
+        if folder.completion_percentage >= 95:
+            new_status = 'completed'
+        elif folder.completion_percentage >= 70:
+            new_status = 'valid'
+        else:
+            new_status = 'ongoing' # Default if below 70%
+
+    folder.status = new_status
+    folder.updated_at = datetime.utcnow()
+    
+    print(f"Folder status updated to: {folder.status} ({folder.completion_percentage}%)")
     db.session.commit()
 
 # ==================== API ROUTES ====================
@@ -755,6 +766,52 @@ def upload_policy():
     
     print(f"=== POLICY UPLOAD COMPLETED - Folder ID: {folder.id} ===\n")
     return jsonify(folder.to_dict()), 201
+def check_and_run_analysis(folder_id):
+    """
+    Checks if a folder has the minimum required documents for a guide update 
+    (Policy + at least one Bill/Claim document). If so, it triggers the full analysis.
+    """
+    documents = Document.query.filter_by(folder_id=folder_id).all()
+    
+    # ⚠️ Customize this logic based on YOUR specific document requirements
+    has_policy = any(doc.document_type == 'policy' for doc in documents)
+    has_bill = any(doc.document_type in ['bill', 'invoice'] for doc in documents)
+    
+    # Run the full analysis (and thus update the guide) only if the basic claim set is present
+    if has_policy and has_bill:
+        print("Required documents detected. Triggering comprehensive analysis to update guide.")
+        # This calls the analyze_folder route logic directly
+        analysis_data = generate_comprehensive_analysis(folder_id) 
+        
+        # Delete old analysis if exists
+        AnalysisReport.query.filter_by(folder_id=folder_id).delete()
+        
+        # Create new analysis report
+        report = AnalysisReport(
+            folder_id=folder_id,
+            total_bill_amount=analysis_data.get('total_bill_amount', 0.0),
+            # ... include all other fields from your AnalysisReport model ...
+            # Using defaults for brevity, but include all fields here:
+            covered_amount=analysis_data.get('covered_amount', 0.0), 
+            user_pays=analysis_data.get('user_pays', 0.0), 
+            missing_documents=json.dumps(analysis_data.get('missing_documents', [])),
+            fraud_warnings=json.dumps(analysis_data.get('fraud_warnings', [])),
+            exclusions_found=json.dumps(analysis_data.get('exclusions_found', [])),
+            claim_guide=json.dumps(analysis_data.get('claim_guide', [])), # This is the key update
+            checklist=json.dumps(analysis_data.get('checklist', [])), 
+            summary=analysis_data.get('summary', 'No summary available.')
+        )
+        
+        db.session.add(report)
+        db.session.commit()
+        
+        # Update folder status based on the new report
+        update_folder_status(folder_id) 
+        
+        return True
+    return False
+
+# NOTE: You will need to import 'json' and 'AnalysisReport' model here if they aren't global.
 
 @app.route('/api/folders/<int:folder_id>/upload', methods=['POST'])
 def upload_document(folder_id):
@@ -773,6 +830,7 @@ def upload_document(folder_id):
         
     uploaded_documents = []
     failed_uploads = []
+    analysis_updated = False # Initialize the flag
 
     for file in files_list:
         if file.filename == '':
@@ -801,7 +859,7 @@ def upload_document(folder_id):
                 failed_uploads.append({'filename': filename, 'reason': 'Duplicate document'})
                 continue
             
-            # Analyze document with enhanced fraud detection
+            # Analyze document for integrity
             analysis = analyze_document(extracted_text, folder_id)
             
             # Create document record
@@ -827,19 +885,30 @@ def upload_document(folder_id):
                 os.remove(filepath)
             failed_uploads.append({'filename': filename, 'reason': str(e)})
     
-    # Update folder status
+    # 1. Update folder status (based on new document completeness)
     update_folder_status(folder_id)
     
+    # 2. Conditional Analysis Run (Updates Guide)
+    # The try/except here is necessary to prevent a crash if the analysis fails
+    try:
+        if len(uploaded_documents) > 0:
+            analysis_updated = check_and_run_analysis(folder_id)
+        else:
+            analysis_updated = False
+    except Exception as e:
+        print(f"Error during conditional analysis run: {e}")
+        analysis_updated = False
+
     result = {
         'uploaded': uploaded_documents,
         'failed': failed_uploads,
         'total_uploaded': len(uploaded_documents),
-        'total_failed': len(failed_uploads)
+        'total_failed': len(failed_uploads),
+        'guide_updated': analysis_updated # Flag returned to the frontend
     }
     
     print(f"=== UPLOAD COMPLETE: {len(uploaded_documents)} succeeded, {len(failed_uploads)} failed ===\n")
     return jsonify(result), 201
-    
     # --- END OF REQUIRED CHANGES ---
 
 @app.route('/api/folders/<int:folder_id>/documents', methods=['GET'])

@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <!-- DASHBOARD VIEW -->
+    
     <div id="dashboardView" class="view active">
+        
         <header class="header">
             <div class="logo">
                 <svg class="icon-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -19,10 +20,24 @@
                     <p>Smart claim processing made simple</p>
                 </div>
             </div>
-        </header>
+            
+            <div class="header-actions">
+                <button id="notificationToggle" class="icon-btn" title="Notifications">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span id="notificationBadge" class="badge">0</span>
+                </button>
+                
+                <div id="notificationCenter" class="notification-dropdown">
+                    <div class="empty-state">Loading alerts...</div>
+                </div>
 
+                </div>
+        </header>
+        
         <main class="container">
-            <!-- Statistics Cards -->
             <div class="stats-grid">
                 <div class="stat-card stat-total">
                     <div class="stat-icon">📁</div>
@@ -61,17 +76,14 @@
                 </div>
             </div>
 
-            <!-- Previous Policies Section -->
             <section class="section">
                 <div class="section-header">
                     <h2>Previous Policies</h2>
                 </div>
                 <div id="foldersList" class="folders-grid">
-                    <!-- Folders will be loaded here -->
-                </div>
+                    </div>
             </section>
 
-            <!-- New Policy Button -->
             <button class="btn-new-policy" id="newPolicyBtn">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <line x1="12" y1="5" x2="12" y2="19"/>
@@ -80,10 +92,7 @@
                 Create New Policy
             </button>
         </main>
-    </div>
-
-    <!-- UPLOAD POLICY VIEW -->
-    <div id="uploadPolicyView" class="view">
+    </div> <div id="uploadPolicyView" class="view">
         <header class="header">
             <button class="btn-back" onclick="showView('dashboard')">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -127,7 +136,6 @@
         </main>
     </div>
 
-    <!-- FOLDER VIEW -->
     <div id="folderView" class="view">
         <header class="header">
             <button class="btn-back" onclick="showView('dashboard')">
@@ -140,7 +148,6 @@
         </header>
 
         <main class="container">
-            <!-- Folder Header -->
             <div class="folder-header">
                 <div>
                     <h2 id="folderTitle">Loading...</h2>
@@ -156,7 +163,6 @@
                 </div>
             </div>
 
-            <!-- Policy Summary Card -->
             <div class="card" id="policySummaryCard">
                 <h3>📋 Policy Summary</h3>
                 <p id="policySummary" style="margin: 1rem 0; line-height: 1.6;"></p>
@@ -176,14 +182,12 @@
                 </div>
             </div>
 
-            <!-- Tabs -->
             <div class="tabs">
                 <button class="tab active" data-tab="documents">📄 Documents</button>
                 <button class="tab" data-tab="analysis">📊 Analysis</button>
                 <button class="tab" data-tab="qna">💬 Q&A</button>
             </div>
 
-            <!-- Documents Tab -->
             <div id="documentsTab" class="tab-content active">
                 <div class="card">
                     <div class="card-header">
@@ -199,8 +203,7 @@
                         </label>
                     </div>
                     <div id="documentsList">
-                        <!-- Documents will be loaded here -->
-                    </div>
+                        </div>
                     
                     <button class="btn-success btn-large" id="analyzeBtn">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -212,7 +215,6 @@
                 </div>
             </div>
 
-            <!-- Analysis Tab -->
             <div id="analysisTab" class="tab-content">
                 <div class="card">
                     <div id="analysisContent">
@@ -227,15 +229,13 @@
                 </div>
             </div>
 
-            <!-- Q&A Tab -->
             <div id="qnaTab" class="tab-content">
                 <div class="card">
                     <h3>💬 Ask About Your Policy</h3>
                     <p style="color: var(--text-light); margin-bottom: 1rem;">Get instant answers about your policy coverage, exclusions, and claim process.</p>
                     <div class="qna-container">
                         <div id="qnaHistory">
-                            <!-- Q&A history will be loaded here -->
-                        </div>
+                            </div>
                         <div class="qna-input">
                             <input type="text" id="questionInput" placeholder="Ask a question about your policy..." autocomplete="off">
                             <button class="btn-primary" id="askBtn">Ask</button>
