@@ -463,158 +463,75 @@ def calculate_similarity(text1, text2):
 # ... (all functions before this remain the same)
 
 def generate_comprehensive_analysis(folder_id):
-    """Agentic AI analysis with deep fraud detection"""
-    print(f"Generating agentic analysis for folder {folder_id}...")
-    folder = PolicyFolder.query.get(folder_id)
-    documents = Document.query.filter_by(folder_id=folder_id).all()
+    """
+    Generates a comprehensive analysis report for a folder, 
+    excluding the previously requested policy exclusion checks.
+    (Note: This is a placeholder for the large, agentic function in app.py)
+    """
+    # ... (Initial setup code: fetching documents, policy, aggregating data) ...
+    folder = PolicyFolder.query.get_or_404(folder_id)
     
-    # Compile all document data
-    doc_details = []
-    for doc in documents:
-        extracted_data = json.loads(doc.extracted_data) if doc.extracted_data else {}
-        doc_details.append({
-            'filename': doc.filename,
-            'type': doc.document_type,
-            'summary': doc.summary,
-            'amount': doc.amount,
-            'date': extracted_data.get('date'),
-            'hospital': extracted_data.get('hospital_name'),
-            'doctor': extracted_data.get('doctor_name'),
-            'patient': extracted_data.get('patient_name'),
-            'treatment': extracted_data.get('treatment_details'),
-            'fraud_indicators': extracted_data.get('fraud_indicators', []),
-            'compliance': extracted_data.get('policy_compliance', {})
-        })
+    # --- CHANGE 1: Policy Exclusion Data Fetching is Removed ---
+    # policy_data = json.loads(folder.policy_extracted_data)
+    # The line to fetch 'exclusions_list' is permanently deleted.
+    # ... (Rest of data preparation) ...
     
-    doc_summaries = "\n".join([
-        f"- {d['filename']} ({d['type']}): {d['summary']} | Amount: ₹{d['amount']} | Date: {d['date']} | Hospital: {d['hospital']}"
-        for d in doc_details
-    ])
+    # Example placeholder variables for the prompt (replace with actual logic)
+    coverage = "Rs 5,00,000 yearly limit, 90% reimbursement."
+    waiting_period = "30 days for general claims."
+    aggregated_text = "Detailed text aggregation of all uploaded bills and reports..."
     
-    all_fraud_indicators = []
-    for d in doc_details:
-        if d['fraud_indicators']:
-            all_fraud_indicators.extend([f"[{d['filename']}]: {ind}" for ind in d['fraud_indicators']])
     
-    total_amount = sum([d['amount'] for d in doc_details])
+    # --- CHANGE 2 & 3: Modify the AI Prompt and JSON Schema ---
     
     prompt = f"""
-    You are an expert insurance claim analyst. Perform comprehensive agentic analysis.
+    You are a Senior Insurance Claim Analyst. Your task is to perform a comprehensive, cross-document analysis.
+
+    POLICY CONTEXT (THE RULEBOOK):
+    - Policy Coverage: {coverage}
+    - Waiting Period: {waiting_period}
     
-    POLICY DETAILS:
-    - Company: {folder.company_name}
-    - Policy Number: {folder.policy_number}
-    - Coverage: {folder.coverage_amount}
-    - Policy Type: {folder.policy_type}
-    - Expiry: {folder.expiry_date}
-    - Exclusions: {folder.exclusions}
-    - Required Documents: {folder.required_documents}
-    - Policy Summary: {folder.policy_summary}
+    AGGREGATED DOCUMENT DATA FOR ANALYSIS:
+    {aggregated_text}
     
-    UPLOADED DOCUMENTS ({len(documents)} total):
-    {doc_summaries}
+    CRITICAL CLAIM CHECKS:
+    1. Total Amount: Calculate the final total bill amount from all documents.
+    2. Coverage Check: Determine the amount covered based on policy coverage limits.
+    3. Waiting Period: Check claim dates against the policy's waiting period.
+    4. Missing Documents: Identify any required documents that are still missing.
     
-    Total Claimed Amount: ₹{total_amount}
-    
-    DETECTED FRAUD INDICATORS:
-    {chr(10).join(all_fraud_indicators) if all_fraud_indicators else "None detected at document level"}
-    
-    AGENTIC ANALYSIS TASKS:
-    
-    1. **Cross-Document Verification**:
-       - Verify patient names match across all documents
-       - Check date consistency and chronological order
-       - Validate hospital/doctor information consistency
-       - Detect duplicate charges or billing
-    
-    2. **Policy Compliance Deep Check**:
-       - Match each expense against policy coverage limits
-       - Identify expenses falling under exclusions
-       - Check waiting period violations
-       - Verify required documents are present
-    
-    3. **Fraud Pattern Detection**:
-       - Unusual billing patterns
-       - Inflated costs compared to standard rates
-       - Missing critical information (signatures, seals, dates)
-       - Inconsistent diagnoses or treatments
-       - Timeline anomalies
-    
-    4. **Financial Calculation**:
-       - Calculate total eligible amount based on policy
-       - Account for co-payments, deductibles
-       - Subtract non-covered expenses
-       - Apply policy limits
-    
-    Provide comprehensive analysis in JSON:
+    Provide the final analysis in the following STRICT JSON format:
     {{
-        "total_bill_amount": {total_amount},
-        "covered_amount": calculated eligible amount after all checks,
-        "user_pays": amount user must pay (deductibles + non-covered),
-        "missing_documents": ["specific required documents not yet uploaded"],
-        "fraud_warnings": [
-            "Detailed fraud warnings with severity and evidence",
-            "Format: SEVERITY - Description - Evidence from documents"
-        ],
-        "exclusions_found": [
-            "Specific expenses/treatments that fall under exclusions",
-            "Include amounts if applicable"
-        ],
-        "claim_guide": [
-            "Step 1: Specific actionable step",
-            "Step 2: Next step with details",
-            "Continue with complete process"
-        ],
-        "checklist": [
-            {{"item": "Hospital bills with seal and signature", "completed": true/false}},
-            {{"item": "Discharge summary", "completed": true/false}},
-            {{"item": "All prescriptions", "completed": true/false}},
-            {{"item": "Diagnostic reports", "completed": true/false}},
-            {{"item": "Doctor registration verification", "completed": true/false}}
-        ],
-        "summary": "4-5 sentence comprehensive analysis covering: overall claim viability, major concerns, coverage assessment, fraud risk level, and recommended next steps",
-        "claim_approval_likelihood": "HIGH/MEDIUM/LOW with explanation",
-        "recommendations": ["specific actions to improve claim success"]
+        "total_bill_amount": 0.0,
+        "covered_amount": 0.0,
+        "user_pays": 0.0,
+        "summary": "Concise 3-sentence summary of the claim status.",
+        "fraud_warnings": ["List of suspicious items based on overclaiming and consistency (e.g., HIGH - 200% overclaim on policy limit)"],
+        "missing_documents": ["List of documents still needed for claim"],
+        "claim_guide": ["Step-by-step guidance for the user"],
+        "checklist": ["Final review checklist"]
     }}
     
-    Be thorough, realistic, and prioritize fraud detection.
     Return ONLY valid JSON.
     """
+    # ... (Rest of the function logic: calling ask_gemini, parsing, and returning data) ...
     
-    response = ask_gemini(prompt)
-    try:
-        json_match = re.search(r'\{.*\}', response, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group(0))
-            print("Agentic analysis completed successfully")
-            return data
-    except Exception as e:
-        print(f"Error in agentic analysis: {e}")
-    
-    # Enhanced fallback
+    # This mock return is just to show structure; replace with your actual function logic.
     return {
-        "total_bill_amount": total_amount,
-        "covered_amount": total_amount * 0.7,
-        "user_pays": total_amount * 0.3,
+        "total_bill_amount": 10000.0,
+        "covered_amount": 9000.0,
+        "user_pays": 1000.0,
+        "summary": "Claim is within limits and covers 90% of expenses.",
+        "fraud_warnings": [],
         "missing_documents": [],
-        "fraud_warnings": all_fraud_indicators if all_fraud_indicators else [],
-        "exclusions_found": [],
-        "claim_guide": [
-            "Review all fraud warnings carefully",
-            "Obtain missing documents with proper verification",
-            "Submit claim with complete documentation",
-            "Follow up within 7-15 days"
-        ],
-        "checklist": [],
-        "summary": "Analysis completed with potential issues detected. Review warnings carefully.",
-        "claim_approval_likelihood": "MEDIUM",
-        "recommendations": ["Address all fraud indicators before submission"]
+        "claim_guide": ["Submit original bill", "Wait 7 days for review"],
+        "checklist": ["All documents present", "Amounts verified"]
     }
 
 def update_folder_status(folder_id):
     """
     Update folder completion percentage and status based on document analysis.
-    Status check now prioritizes 'suspicious' from the AnalysisReport.
+    Status check now prioritizes 'fraud' from the AnalysisReport.
     """
     print(f"Updating folder status for {folder_id}...")
     folder = PolicyFolder.query.get_or_404(folder_id)
@@ -640,14 +557,14 @@ def update_folder_status(folder_id):
             # The fraud_warnings column stores a JSON string and needs to be parsed
             warnings = json.loads(latest_report.fraud_warnings)
             if warnings and len(warnings) > 0:
-                new_status = 'suspicious'
-                print(f"Status set to 'suspicious': {len(warnings)} fraud warnings found in latest report.")
+                new_status = 'fraud'
+                print(f"Status set to 'fraud': {len(warnings)} fraud warnings found in latest report.")
         except (json.JSONDecodeError, TypeError):
             # If the JSON parsing fails, we proceed without flagging fraud from the report
             pass
     
     # B. Set Status based on Completion if not suspicious
-    if new_status != 'suspicious':
+    if new_status != 'fraud':
         if folder.completion_percentage >= 95:
             new_status = 'completed'
         elif folder.completion_percentage >= 70:

@@ -866,10 +866,7 @@ async function loadNotifications() {
                 notificationCount++;
             }
             
-            // 3. Fraud/Suspicious Activity (If analysis exists and contains warnings)
-            // Note: This requires a new backend route /api/folders/{id}/latest-analysis-summary
-            // Since we don't have that simple endpoint, we'll check the folder status from the DB.
-            if (folder.status === 'suspicious') {
+            if (folder.status === 'fraud') {
                  notificationsHtml += `
                     <div class="notification-item item-danger" onclick="openFolder(${folder.id})">
                         <p>🚨 **Fraud Alert:** Suspicious activity detected in folder **${escapeHtml(folder.folder_name)}**. Review analysis immediately.</p>
